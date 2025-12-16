@@ -328,6 +328,8 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
     setCurrentTime(0);
     setIsPlaying(false);
     setAudioFile(null);
+    timerStartTimeRef.current = 0;
+    timerStartOffsetRef.current = 0;
     onDurationChange?.(seconds);
   };
 
@@ -340,8 +342,11 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
   useEffect(() => {
     if (seekTo !== null && seekTo !== undefined) {
       if (mode === 'timer') {
-        setCurrentTime(seekTo);
-        onTimeUpdate?.(seekTo);
+        const clampedTime = Math.max(0, duration > 0 ? Math.min(seekTo, duration) : seekTo);
+        timerStartOffsetRef.current = clampedTime;
+        timerStartTimeRef.current = isPlaying ? Date.now() : 0;
+        setCurrentTime(clampedTime);
+        onTimeUpdate?.(clampedTime);
       } else {
         const audio = audioRef.current;
         if (audio && audio.duration) {
@@ -355,7 +360,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
         }
       }
     }
-  }, [seekTo, mode, onTimeUpdate]);
+  }, [seekTo, mode, onTimeUpdate, duration, isPlaying]);
 
   // 좌우 화살표 키로 0.1초 단위 이동
   useEffect(() => {
@@ -371,9 +376,11 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run3',hypothesisId:'H_seek',location:'AudioPlayer.tsx:keydown',message:'arrow seek',data:{delta,mode},timestamp:Date.now()})}).catch(()=>{});
         // #endregion
-        
+
         if (mode === 'timer') {
           const newTime = Math.max(0, Math.min(currentTime + delta, duration));
+          timerStartOffsetRef.current = newTime;
+          timerStartTimeRef.current = isPlaying ? Date.now() : 0;
           setCurrentTime(newTime);
           onTimeUpdate?.(newTime);
         } else {
@@ -392,7 +399,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [mode, currentTime, duration, onTimeUpdate]);
+  }, [mode, currentTime, duration, onTimeUpdate, isPlaying, seekStepSeconds]);
 
   const togglePlay = async () => {
     if (mode === 'timer') {
