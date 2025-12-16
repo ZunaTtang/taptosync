@@ -11,3 +11,52 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-quiet: 0 4px 12px rgba(15, 23, 42, 0.06);
+  --color-border: #e5e7eb;
+  --color-surface: #ffffff;
+  --color-subtle: #f8fafc;
+}
+
+@layer components {
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm p-5;
+  }
+
+  .card-header {
+    @apply flex items-start justify-between gap-2 mb-4;
+  }
+
+  .card-title {
+    @apply text-base font-semibold text-gray-900;
+  }
+
+  .card-subtitle {
+    @apply text-sm text-gray-600;
+  }
+
+  .section-pill {
+    @apply inline-flex items-center gap-2 text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-700;
+  }
+
+  .section-grid {
+    @apply grid gap-4 md:grid-cols-2;
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  }
+}
+

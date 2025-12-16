@@ -210,125 +210,141 @@ export function TimelineView({ lines, currentTime, onSeekTo, onTimeUpdate, onSet
   };
 
   return (
-    <div className="w-full relative">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">타임라인</h3>
-      <div ref={timelineRef} className="space-y-2 max-h-96 overflow-y-auto">
-        {lines.map((line) => {
-          const active = isActive(line);
-          const isEditingStart = editingTime?.lineId === line.id && editingTime.type === 'start';
-          const isEditingEnd = editingTime?.lineId === line.id && editingTime.type === 'end';
-          
-          return (
-            <div
-              key={line.id}
-              ref={active ? activeLineRef : null}
-              onClick={() => handleLineClick(line)}
-              className={`p-3 rounded-lg border cursor-pointer transition-all duration-300 ${
-                active
-                  ? 'bg-blue-100 border-blue-600 shadow-md scale-[1.02]'
-                  : 'bg-white border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className={`text-sm font-medium mb-1 transition-colors ${
-                    active
-                      ? 'text-blue-900 font-semibold'
-                      : 'text-gray-700'
-                  }`}>
-                    {line.text}
-                  </div>
-                  <div className={`text-xs flex items-center gap-2 flex-wrap transition-colors ${
-                    active ? 'text-blue-700' : 'text-gray-500'
-                  }`}>
-                    {isEditingStart ? (
-                      <div className="relative">
-                        <TimeStepper
-                          value={line.startTime || 0}
-                          onChange={handleTimeUpdate}
-                          onClose={() => setEditingTime(null)}
-                        />
-                      </div>
-                    ) : (
-                      <span
-                        onClick={(e) => line.startTime !== undefined && handleTimeClick(e, line, 'start')}
-                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 ${
-                          active
-                            ? 'bg-green-200 hover:bg-green-300 text-green-900 font-semibold'
-                            : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200'
-                        }`}
-                        title="시작 시간"
-                      >
-                        <span className="text-xs">▶</span>
-                        {formatTime(line.startTime)}
-                      </span>
-                    )}
-                    <input
-                      type="text"
-                      value={inlineStart[line.id] ?? (line.startTime !== undefined ? formatTime(line.startTime) : '')}
-                      onChange={(e) => setInlineStart({ ...inlineStart, [line.id]: e.target.value })}
-                      onBlur={() => {
+    <div className="card w-full relative">
+      <div className="card-header pb-3 border-b border-gray-200 sticky top-0 z-10 bg-white">
+        <div>
+          <p className="card-title">타임라인</p>
+          <p className="card-subtitle">라인별 시작/종료 시점을 한눈에 정렬했습니다</p>
+        </div>
+        <span className="section-pill">{lines.length} 줄</span>
+      </div>
+
+      <div className="relative">
+        <div className="grid grid-cols-[72px_1fr_140px_140px] text-xs font-semibold text-gray-600 px-4 py-2 sticky top-[57px] z-10 bg-gray-50 border-b border-gray-200">
+          <span className="uppercase tracking-wide">라인</span>
+          <span className="uppercase tracking-wide">텍스트</span>
+          <span className="uppercase tracking-wide text-right pr-4">시작</span>
+          <span className="uppercase tracking-wide text-right pr-4">종료</span>
+        </div>
+        <div ref={timelineRef} className="max-h-[520px] overflow-y-auto divide-y divide-gray-100">
+          {lines.map((line) => {
+            const active = isActive(line);
+            const isEditingStart = editingTime?.lineId === line.id && editingTime.type === 'start';
+            const isEditingEnd = editingTime?.lineId === line.id && editingTime.type === 'end';
+
+            return (
+              <div
+                key={line.id}
+                ref={active ? activeLineRef : null}
+                onClick={() => handleLineClick(line)}
+                className={`grid grid-cols-[72px_1fr_140px_140px] items-center gap-3 px-4 py-3 cursor-pointer transition-all ${
+                  active
+                    ? 'bg-blue-50/70 border-l-4 border-blue-500 shadow-[inset_0_1px_0_rgba(59,130,246,0.2)]'
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">#{line.order}</span>
+                  {line.startTime !== undefined && line.endTime !== undefined ? (
+                    <span className="px-2 py-1 text-[11px] rounded-full bg-emerald-50 text-emerald-700">완료</span>
+                  ) : (
+                    <span className="px-2 py-1 text-[11px] rounded-full bg-amber-50 text-amber-700">대기</span>
+                  )}
+                </div>
+
+                <div className="text-sm text-gray-800 leading-snug">{line.text}</div>
+
+                <div className="relative flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                  {isEditingStart ? (
+                    <div className="relative">
+                      <TimeStepper
+                        value={line.startTime || 0}
+                        onChange={handleTimeUpdate}
+                        onClose={() => setEditingTime(null)}
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => line.startTime !== undefined && handleTimeClick(e, line, 'start')}
+                      className={`inline-flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-xs font-semibold border focus-ring font-mono ${
+                        active
+                          ? 'bg-green-100 text-green-800 border-green-200'
+                          : 'bg-white text-gray-800 border-gray-200 hover:border-green-300'
+                      }`}
+                      title="시작 시간"
+                    >
+                      <span className="text-green-600">▶</span>
+                      <span>{formatTime(line.startTime)}</span>
+                    </button>
+                  )}
+                  <input
+                    type="text"
+                    value={inlineStart[line.id] ?? (line.startTime !== undefined ? formatTime(line.startTime) : '')}
+                    onChange={(e) => setInlineStart({ ...inlineStart, [line.id]: e.target.value })}
+                    onBlur={() => {
+                      const parsed = parseTimeInput(inlineStart[line.id] ?? '');
+                      if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'start', parsed);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         const parsed = parseTimeInput(inlineStart[line.id] ?? '');
                         if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'start', parsed);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const parsed = parseTimeInput(inlineStart[line.id] ?? '');
-                          if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'start', parsed);
-                        }
-                      }}
-                      placeholder="MM:SS.mmm"
-                      className="px-2 py-1 text-xs border border-gray-200 rounded bg-white"
-                    />
-                    <span className="text-gray-400">→</span>
-                    {isEditingEnd ? (
-                      <div className="relative">
-                        <TimeStepper
-                          value={line.endTime || 0}
-                          onChange={handleTimeUpdate}
-                          onClose={() => setEditingTime(null)}
-                        />
-                      </div>
-                    ) : (
-                      <span
-                        onClick={(e) => line.endTime !== undefined && handleTimeClick(e, line, 'end')}
-                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 ${
-                          active
-                            ? 'bg-red-200 hover:bg-red-300 text-red-900 font-semibold'
-                            : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
-                        }`}
-                        title="종료 시간"
-                      >
-                        <span className="text-xs">⏹</span>
-                        {formatTime(line.endTime)}
-                      </span>
-                    )}
-                    <input
-                      type="text"
-                      value={inlineEnd[line.id] ?? (line.endTime !== undefined ? formatTime(line.endTime) : '')}
-                      onChange={(e) => setInlineEnd({ ...inlineEnd, [line.id]: e.target.value })}
-                      onBlur={() => {
+                      }
+                    }}
+                    placeholder="MM:SS.mmm"
+                    aria-label={`${line.text} 시작 시간`}
+                    className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg bg-white font-mono focus-ring"
+                  />
+                </div>
+
+                <div className="relative flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                  {isEditingEnd ? (
+                    <div className="relative">
+                      <TimeStepper
+                        value={line.endTime || 0}
+                        onChange={handleTimeUpdate}
+                        onClose={() => setEditingTime(null)}
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(e) => line.endTime !== undefined && handleTimeClick(e, line, 'end')}
+                      className={`inline-flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-xs font-semibold border focus-ring font-mono ${
+                        active
+                          ? 'bg-rose-100 text-rose-800 border-rose-200'
+                          : 'bg-white text-gray-800 border-gray-200 hover:border-rose-300'
+                      }`}
+                      title="종료 시간"
+                    >
+                      <span className="text-rose-600">⏹</span>
+                      <span>{formatTime(line.endTime)}</span>
+                    </button>
+                  )}
+                  <input
+                    type="text"
+                    value={inlineEnd[line.id] ?? (line.endTime !== undefined ? formatTime(line.endTime) : '')}
+                    onChange={(e) => setInlineEnd({ ...inlineEnd, [line.id]: e.target.value })}
+                    onBlur={() => {
+                      const parsed = parseTimeInput(inlineEnd[line.id] ?? '');
+                      if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'end', parsed);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         const parsed = parseTimeInput(inlineEnd[line.id] ?? '');
                         if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'end', parsed);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const parsed = parseTimeInput(inlineEnd[line.id] ?? '');
-                          if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'end', parsed);
-                        }
-                      }}
-                      placeholder="MM:SS.mmm"
-                      className="px-2 py-1 text-xs border border-gray-200 rounded bg-white"
-                    />
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400">
-                  #{line.order}
+                      }
+                    }}
+                    placeholder="MM:SS.mmm"
+                    aria-label={`${line.text} 종료 시간`}
+                    className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg bg-white font-mono focus-ring"
+                  />
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

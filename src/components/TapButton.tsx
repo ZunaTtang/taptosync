@@ -32,19 +32,20 @@ export function TapButton({ onStartTap, onEndTap, disabled = false, currentMode 
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-3">
       <button
         onClick={handleStartClick}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={`flex-1 px-6 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all ${
+        aria-pressed={currentMode === 'start'}
+        className={`flex-1 px-6 py-4 text-white text-lg font-semibold rounded-xl focus-ring disabled:bg-gray-400 disabled:cursor-not-allowed transition-all ${
           currentMode === 'start'
-            ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500 shadow-md scale-105'
-            : 'bg-green-400 hover:bg-green-500 focus:ring-green-400'
+            ? 'bg-blue-600 hover:bg-blue-700 shadow-lg scale-[1.01]'
+            : 'bg-blue-500 hover:bg-blue-600'
         }`}
       >
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-2xl">▶</span>
+        <div className="flex items-center justify-center gap-3">
+          <span aria-hidden className="text-xl">▶</span>
           <span>시작 탭</span>
         </div>
       </button>
@@ -52,14 +53,15 @@ export function TapButton({ onStartTap, onEndTap, disabled = false, currentMode 
         onClick={handleEndClick}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={`flex-1 px-6 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all ${
+        aria-pressed={currentMode === 'end'}
+        className={`flex-1 px-6 py-4 text-white text-lg font-semibold rounded-xl focus-ring disabled:bg-gray-400 disabled:cursor-not-allowed transition-all ${
           currentMode === 'end'
-            ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500 shadow-md scale-105'
-            : 'bg-red-400 hover:bg-red-500 focus:ring-red-400'
+            ? 'bg-rose-600 hover:bg-rose-700 shadow-lg scale-[1.01]'
+            : 'bg-rose-500 hover:bg-rose-600'
         }`}
       >
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-2xl">⏹</span>
+        <div className="flex items-center justify-center gap-3">
+          <span aria-hidden className="text-xl">⏹</span>
           <span>종료 탭</span>
         </div>
       </button>

@@ -7,7 +7,6 @@ import { ExportPanel } from './components/ExportPanel';
 import { getNextLineId } from './features/sync/collector';
 import { applyMinGap, smoothIntervals } from './features/sync/smoother';
 import { allocateEndTimes } from './features/sync/allocator';
-import { scaleTimeline } from './features/sync/scaler';
 import type { Line } from './models/line';
 
 const logLines = (location: string, runId: string, hypothesisId: string, linesSnapshot: Line[]) => {
@@ -31,6 +30,7 @@ function App() {
   const [seekTo, setSeekTo] = useState<number | null>(null);
   const [tapMode, setTapMode] = useState<'start' | 'end'>('start');
   const [seekStepSeconds, setSeekStepSeconds] = useState(0.5);
+  const [showGuide, setShowGuide] = useState(true);
   const audioPlayerRef = useRef<AudioPlayerRef>(null);
 
   // 전체 타임스탬프 초기화
@@ -189,57 +189,103 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          TapSync Studio
-        </h1>
-        <p className="text-sm text-gray-600 mb-6">타임스탬프를 빠르게 찍고 직접 편집하세요</p>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* 좌측: 텍스트 입력 */}
-          <div className="space-y-4">
-            <TextInput onLinesChange={handleLinesChange} />
-            <div className="flex items-center gap-3 text-sm text-gray-700">
-              <label className="font-medium">재생 이동 간격(초)</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={seekStepSeconds}
-                onChange={(e) => setSeekStepSeconds(Math.max(0.1, Number(e.target.value) || 0.1))}
-                className="w-24 px-2 py-1 border border-gray-300 rounded"
-              />
-              <span className="text-xs text-gray-500">좌/우 화살표로 적용</span>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/80 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-6 py-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold">TapSync Studio</h1>
+              <span className="section-pill">베타</span>
             </div>
-            <AudioPlayer
-              onTimeUpdate={setCurrentTime}
-              onDurationChange={setAudioDuration}
-              onPlayingChange={setIsPlaying}
-              seekTo={seekTo}
-              seekStepSeconds={seekStepSeconds}
-            />
+            <p className="text-sm text-gray-600">텍스트 입력 → 재생/탭 → 타임라인 미세조정 → Export 흐름에 맞춰 정리했습니다.</p>
+          </div>
+          <div className="w-full lg:w-auto">
+            <ExportPanel lines={lines} />
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-6 py-8 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-6 items-start">
+          <div className="space-y-4">
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <p className="card-title">작업 흐름 안내</p>
+                  <p className="card-subtitle">텍스트를 준비한 뒤 재생-탭-조정-Export 순서로 진행하세요</p>
+                </div>
+                <button
+                  onClick={() => setShowGuide(prev => !prev)}
+                  className="text-sm text-blue-600 hover:text-blue-700 focus-ring rounded-full px-3 py-1"
+                  aria-expanded={showGuide}
+                >
+                  {showGuide ? '접기' : '펼치기'}
+                </button>
+              </div>
+              {showGuide && (
+                <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
+                  <li>자막 텍스트를 붙여넣어 각 줄을 생성합니다.</li>
+                  <li>오디오 파일을 불러오거나 타이머 길이를 입력해 재생합니다.</li>
+                  <li>재생 중 시작/종료 탭으로 타임스탬프를 기록합니다.</li>
+                  <li>타임라인에서 시간 값을 미세 조정합니다.</li>
+                  <li>모든 라인이 채워지면 원하는 포맷으로 Export 합니다.</li>
+                </ol>
+              )}
+            </div>
+
+            <div className="card">
+              <TextInput onLinesChange={handleLinesChange} />
+            </div>
+
+            <div className="card space-y-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="card-title">재생 & 오디오 설정</p>
+                  <p className="text-xs text-gray-500">좌/우 화살표는 아래 간격(초)만큼 이동합니다.</p>
+                </div>
+                <label className="flex items-center gap-3 text-sm text-gray-700">
+                  <span className="font-medium">재생 이동 간격(초)</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    value={seekStepSeconds}
+                    aria-label="재생 이동 간격(초)"
+                    onChange={(e) => setSeekStepSeconds(Math.max(0.1, Number(e.target.value) || 0.1))}
+                    className="w-28 px-3 py-2 border border-gray-300 rounded-lg text-sm focus-ring"
+                  />
+                </label>
+              </div>
+              <AudioPlayer
+                onTimeUpdate={setCurrentTime}
+                onDurationChange={setAudioDuration}
+                onPlayingChange={setIsPlaying}
+                seekTo={seekTo}
+                seekStepSeconds={seekStepSeconds}
+              />
+            </div>
           </div>
 
-          {/* 우측: Tap 버튼 및 타임라인 */}
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  현재 라인: {currentLineIndex + 1} / {lines.length}
-                </p>
-                {currentLine && (
-                  <p className="text-lg font-medium text-gray-900 mb-4">
-                    {currentLine.text}
-                  </p>
-                )}
-                <p className="text-xs text-gray-500 mb-2">
-                  💡 단축키: ← → (0.1초 이동)
-                </p>
+          <div className="space-y-4">
+            <div className="card space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    <span className="section-pill">현재 라인</span>
+                    <span className="text-sm text-gray-600">{currentLineIndex + 1} / {lines.length || 0}</span>
+                  </div>
+                  {currentLine && (
+                    <p className="text-lg font-semibold text-gray-900 leading-tight">{currentLine.text}</p>
+                  )}
+                  <p className="text-xs text-gray-500">💡 단축키: ← → (이동) · Space/Enter로 현재 모드 탭</p>
+                </div>
+                <div className={`text-xs px-3 py-1 rounded-full ${tapMode === 'start' ? 'bg-blue-100 text-blue-700' : 'bg-rose-100 text-rose-700'}`}>
+                  {tapMode === 'start' ? '시작 대기' : '종료 대기'}
+                </div>
               </div>
-              <TapButton 
-                onStartTap={handleStartTap} 
-                onEndTap={handleEndTap} 
+              <TapButton
+                onStartTap={handleStartTap}
+                onEndTap={handleEndTap}
                 disabled={!canTap}
                 currentMode={tapMode}
               />
@@ -252,22 +298,18 @@ function App() {
               onTimeUpdate={handleTimeUpdate}
               onSetMissingTime={handleSetMissingTime}
             />
+
             <div className="flex justify-end">
               <button
                 onClick={handleResetTimestamps}
-                className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200 focus-ring"
               >
                 타임스탬프 초기화
               </button>
             </div>
           </div>
         </div>
-
-        {/* Export 패널 */}
-        <div className="mt-8">
-          <ExportPanel lines={lines} />
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

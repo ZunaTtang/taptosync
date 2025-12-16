@@ -38,27 +38,39 @@ export function ExportPanel({ lines }: ExportPanelProps) {
   const hasTimestamps = lines.some(l => l.startTime !== undefined && l.endTime !== undefined);
 
   return (
-    <div className="w-full">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Export</h3>
+    <div className="w-full card">
+      <div className="card-header">
+        <div>
+          <p className="card-title">Export</p>
+          <p className="card-subtitle">완료된 타임라인을 다양한 포맷으로 저장하세요</p>
+        </div>
+        <span className="section-pill" aria-live="polite">
+          {hasTimestamps ? '준비 완료' : '타임라인 필요'}
+        </span>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         <button
           onClick={handleExportSRT}
           disabled={!hasTimestamps}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          title={!hasTimestamps ? '시작·종료 시간이 모두 입력되면 다운로드할 수 있습니다.' : undefined}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus-ring disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
         >
           SRT 다운로드
         </button>
         <button
           onClick={handleExportLRC}
           disabled={!hasTimestamps}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          title={!hasTimestamps ? '시작·종료 시간이 모두 입력되면 다운로드할 수 있습니다.' : undefined}
+          className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 focus-ring disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
         >
           LRC 다운로드
         </button>
         <button
           onClick={handleExportCapCut}
           disabled={!hasTimestamps}
-          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          title={!hasTimestamps ? '시작·종료 시간이 모두 입력되면 다운로드할 수 있습니다.' : undefined}
+          className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 focus-ring disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
         >
           CapCut CSV 다운로드
         </button>
