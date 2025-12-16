@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type ReactNode } from 'react';
 import type { Line } from '@/models/line';
 
 interface TimelineViewProps {
@@ -7,6 +7,10 @@ interface TimelineViewProps {
   onSeekTo?: (time: number) => void;
   onTimeUpdate?: (lineId: string, time: 'start' | 'end', newTime: number) => void;
   onSetMissingTime?: (lineId: string, fallbackTime: number) => void;
+  headerAction?: ReactNode;
+  currentLineIndex?: number;
+  totalLines?: number;
+  onJumpToCurrent?: () => void;
 }
 
 interface TimeStepperProps {
@@ -119,12 +123,28 @@ function TimeStepper({ value, onChange, onClose }: TimeStepperProps) {
   );
 }
 
-export function TimelineView({ lines, currentTime, onSeekTo, onTimeUpdate, onSetMissingTime }: TimelineViewProps) {
+export function TimelineView({
+  lines,
+  currentTime,
+  onSeekTo,
+  onTimeUpdate,
+  onSetMissingTime,
+  headerAction,
+  currentLineIndex,
+  totalLines,
+  onJumpToCurrent,
+}: TimelineViewProps) {
   const [editingTime, setEditingTime] = useState<{ lineId: string; type: 'start' | 'end' } | null>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const activeLineRef = useRef<HTMLDivElement>(null);
   const [inlineStart, setInlineStart] = useState<Record<string, string>>({});
   const [inlineEnd, setInlineEnd] = useState<Record<string, string>>({});
+
+  const scrollToActiveLine = () => {
+    if (activeLineRef.current) {
+      activeLineRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
 
   // 활성 라인으로 자동 스크롤
   useEffect(() => {
@@ -210,125 +230,153 @@ export function TimelineView({ lines, currentTime, onSeekTo, onTimeUpdate, onSet
   };
 
   return (
-    <div className="w-full relative">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">타임라인</h3>
-      <div ref={timelineRef} className="space-y-2 max-h-96 overflow-y-auto">
-        {lines.map((line) => {
-          const active = isActive(line);
-          const isEditingStart = editingTime?.lineId === line.id && editingTime.type === 'start';
-          const isEditingEnd = editingTime?.lineId === line.id && editingTime.type === 'end';
-          
-          return (
-            <div
-              key={line.id}
-              ref={active ? activeLineRef : null}
-              onClick={() => handleLineClick(line)}
-              className={`p-3 rounded-lg border cursor-pointer transition-all duration-300 ${
-                active
-                  ? 'bg-blue-100 border-blue-600 shadow-md scale-[1.02]'
-                  : 'bg-white border-gray-200 hover:border-gray-300'
-              }`}
+    <div className="app-card space-y-3">
+      <div className="section-header sticky top-0 z-10 mb-1 bg-white pb-2">
+        <div>
+          <p className="section-title">타임라인</p>
+          <p className="text-xs text-gray-500">행 클릭으로 이동 · 숫자 직접 입력으로 미세 조정</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {typeof currentLineIndex === 'number' && typeof totalLines === 'number' && (
+            <span className="rounded-full bg-blue-50 px-3 py-1 font-semibold text-blue-700 border border-blue-100">
+              현재 라인 {Math.min(currentLineIndex + 1, totalLines)} / {totalLines}
+            </span>
+          )}
+          <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">총 {lines.length}라인</span>
+          {(onJumpToCurrent || activeLineRef.current) && (
+            <button
+              type="button"
+              onClick={() => (onJumpToCurrent ? onJumpToCurrent() : scrollToActiveLine())}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-1 font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className={`text-sm font-medium mb-1 transition-colors ${
-                    active
-                      ? 'text-blue-900 font-semibold'
-                      : 'text-gray-700'
-                  }`}>
-                    {line.text}
-                  </div>
-                  <div className={`text-xs flex items-center gap-2 flex-wrap transition-colors ${
-                    active ? 'text-blue-700' : 'text-gray-500'
-                  }`}>
-                    {isEditingStart ? (
-                      <div className="relative">
-                        <TimeStepper
-                          value={line.startTime || 0}
-                          onChange={handleTimeUpdate}
-                          onClose={() => setEditingTime(null)}
-                        />
-                      </div>
-                    ) : (
-                      <span
-                        onClick={(e) => line.startTime !== undefined && handleTimeClick(e, line, 'start')}
-                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 ${
-                          active
-                            ? 'bg-green-200 hover:bg-green-300 text-green-900 font-semibold'
-                            : 'bg-green-50 hover:bg-green-100 text-green-700 border border-green-200'
-                        }`}
-                        title="시작 시간"
-                      >
-                        <span className="text-xs">▶</span>
-                        {formatTime(line.startTime)}
-                      </span>
-                    )}
-                    <input
-                      type="text"
-                      value={inlineStart[line.id] ?? (line.startTime !== undefined ? formatTime(line.startTime) : '')}
-                      onChange={(e) => setInlineStart({ ...inlineStart, [line.id]: e.target.value })}
-                      onBlur={() => {
+              현재 라인으로 이동
+            </button>
+          )}
+          {headerAction}
+        </div>
+      </div>
+      <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div ref={timelineRef} className="max-h-96 overflow-y-auto">
+          <div className="grid grid-cols-[70px_minmax(0,1fr)_140px_140px] items-center gap-3 px-3 py-2 bg-gray-50 text-[11px] font-semibold text-gray-600 sticky top-0 z-10 border-b border-gray-200">
+            <span>#</span>
+            <span>자막 내용</span>
+            <span className="text-center">시작</span>
+            <span className="text-center">종료</span>
+          </div>
+          {lines.map((line) => {
+            const active = isActive(line);
+            const isEditingStart = editingTime?.lineId === line.id && editingTime.type === 'start';
+            const isEditingEnd = editingTime?.lineId === line.id && editingTime.type === 'end';
+
+            return (
+              <div
+                key={line.id}
+                ref={active ? activeLineRef : null}
+                onClick={() => handleLineClick(line)}
+                className={`grid grid-cols-[70px_minmax(0,1fr)_140px_140px] items-start gap-3 px-3 py-3 cursor-pointer transition-colors ${
+                  active
+                    ? 'bg-blue-50/70 border-l-4 border-blue-400'
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <span className={`px-2 py-1 rounded-full border ${active ? 'bg-blue-100 text-blue-800 border-blue-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>#{line.order}</span>
+                  {active && <span className="w-2 h-2 rounded-full bg-blue-500" aria-hidden />}
+                </div>
+                <div className="space-y-1">
+                  <p className={`text-sm font-medium leading-snug ${active ? 'text-blue-900' : 'text-gray-800'}`}>{line.text}</p>
+                  <p className="text-[11px] text-gray-500">라인을 클릭하면 시작 시간으로 이동합니다.</p>
+                </div>
+                <div className="relative flex flex-col gap-2 text-xs">
+                  {isEditingStart && (
+                    <div className="absolute z-10 -top-2 left-0">
+                      <TimeStepper
+                        value={line.startTime || 0}
+                        onChange={handleTimeUpdate}
+                        onClose={() => setEditingTime(null)}
+                      />
+                    </div>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      line.startTime !== undefined && handleTimeClick(e, line, 'start');
+                    }}
+                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border font-semibold font-mono ${
+                      active
+                        ? 'bg-green-100 text-green-900 border-green-200'
+                        : 'bg-white text-green-700 border-green-200 hover:bg-green-50'
+                    }`}
+                  >
+                    <span className="text-[11px]">▶ 시작</span>
+                    <span>{formatTime(line.startTime)}</span>
+                  </button>
+                  <input
+                    type="text"
+                    value={inlineStart[line.id] ?? (line.startTime !== undefined ? formatTime(line.startTime) : '')}
+                    onChange={(e) => setInlineStart({ ...inlineStart, [line.id]: e.target.value })}
+                    onBlur={() => {
+                      const parsed = parseTimeInput(inlineStart[line.id] ?? '');
+                      if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'start', parsed);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         const parsed = parseTimeInput(inlineStart[line.id] ?? '');
                         if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'start', parsed);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const parsed = parseTimeInput(inlineStart[line.id] ?? '');
-                          if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'start', parsed);
-                        }
-                      }}
-                      placeholder="MM:SS.mmm"
-                      className="px-2 py-1 text-xs border border-gray-200 rounded bg-white"
-                    />
-                    <span className="text-gray-400">→</span>
-                    {isEditingEnd ? (
-                      <div className="relative">
-                        <TimeStepper
-                          value={line.endTime || 0}
-                          onChange={handleTimeUpdate}
-                          onClose={() => setEditingTime(null)}
-                        />
-                      </div>
-                    ) : (
-                      <span
-                        onClick={(e) => line.endTime !== undefined && handleTimeClick(e, line, 'end')}
-                        className={`px-2 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 ${
-                          active
-                            ? 'bg-red-200 hover:bg-red-300 text-red-900 font-semibold'
-                            : 'bg-red-50 hover:bg-red-100 text-red-700 border border-red-200'
-                        }`}
-                        title="종료 시간"
-                      >
-                        <span className="text-xs">⏹</span>
-                        {formatTime(line.endTime)}
-                      </span>
-                    )}
-                    <input
-                      type="text"
-                      value={inlineEnd[line.id] ?? (line.endTime !== undefined ? formatTime(line.endTime) : '')}
-                      onChange={(e) => setInlineEnd({ ...inlineEnd, [line.id]: e.target.value })}
-                      onBlur={() => {
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="MM:SS.mmm"
+                    className="px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="relative flex flex-col gap-2 text-xs">
+                  {isEditingEnd && (
+                    <div className="absolute z-10 -top-2 left-0">
+                      <TimeStepper
+                        value={line.endTime || 0}
+                        onChange={handleTimeUpdate}
+                        onClose={() => setEditingTime(null)}
+                      />
+                    </div>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      line.endTime !== undefined && handleTimeClick(e, line, 'end');
+                    }}
+                    className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg border font-semibold font-mono ${
+                      active
+                        ? 'bg-rose-100 text-rose-900 border-rose-200'
+                        : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50'
+                    }`}
+                  >
+                    <span className="text-[11px]">⏹ 종료</span>
+                    <span>{formatTime(line.endTime)}</span>
+                  </button>
+                  <input
+                    type="text"
+                    value={inlineEnd[line.id] ?? (line.endTime !== undefined ? formatTime(line.endTime) : '')}
+                    onChange={(e) => setInlineEnd({ ...inlineEnd, [line.id]: e.target.value })}
+                    onBlur={() => {
+                      const parsed = parseTimeInput(inlineEnd[line.id] ?? '');
+                      if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'end', parsed);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         const parsed = parseTimeInput(inlineEnd[line.id] ?? '');
                         if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'end', parsed);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const parsed = parseTimeInput(inlineEnd[line.id] ?? '');
-                          if (parsed !== null && onTimeUpdate) onTimeUpdate(line.id, 'end', parsed);
-                        }
-                      }}
-                      placeholder="MM:SS.mmm"
-                      className="px-2 py-1 text-xs border border-gray-200 rounded bg-white"
-                    />
-                  </div>
-                </div>
-                <div className="text-xs text-gray-400">
-                  #{line.order}
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="MM:SS.mmm"
+                    className="px-3 py-2 text-xs border border-gray-200 rounded-lg bg-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

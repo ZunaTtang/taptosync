@@ -11,6 +11,7 @@ interface AudioPlayerProps {
 
 export interface AudioPlayerRef {
   getCurrentTime: () => number;
+  togglePlay: () => void;
 }
 
 type PlayerMode = 'file' | 'timer';
@@ -151,11 +152,6 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
       return currentTime;
     }
   };
-
-  // 외부에서 getCurrentTime 함수에 접근할 수 있도록 ref 노출
-  useImperativeHandle(ref, () => ({
-    getCurrentTime,
-  }));
 
   // 오디오 준비 상태 주기적 확인 (로딩 상태 해제를 위한 안전장치)
   useEffect(() => {
@@ -392,7 +388,7 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [mode, currentTime, duration, onTimeUpdate]);
+  }, [mode, currentTime, duration, onTimeUpdate, seekStepSeconds]);
 
   const togglePlay = async () => {
     if (mode === 'timer') {
@@ -429,6 +425,12 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
       }
     }
   };
+
+  // 외부에서 플레이 상태 제어/조회 가능하도록 ref 노출
+  useImperativeHandle(ref, () => ({
+    getCurrentTime,
+    togglePlay,
+  }));
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);

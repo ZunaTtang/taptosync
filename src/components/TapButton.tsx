@@ -32,15 +32,16 @@ export function TapButton({ onStartTap, onEndTap, disabled = false, currentMode 
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <button
         onClick={handleStartClick}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={`flex-1 px-6 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all ${
+        aria-label="시작 탭"
+        className={`h-14 px-6 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-all shadow-sm ${
           currentMode === 'start'
-            ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500 shadow-md scale-105'
-            : 'bg-green-400 hover:bg-green-500 focus:ring-green-400'
+            ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500 shadow-md'
+            : 'bg-green-500 hover:bg-green-600 focus:ring-green-400'
         }`}
       >
         <div className="flex items-center justify-center gap-2">
@@ -52,10 +53,11 @@ export function TapButton({ onStartTap, onEndTap, disabled = false, currentMode 
         onClick={handleEndClick}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className={`flex-1 px-6 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all ${
+        aria-label="종료 탭"
+        className={`h-14 px-6 py-4 text-white text-lg font-semibold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:bg-gray-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-all shadow-sm ${
           currentMode === 'end'
-            ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500 shadow-md scale-105'
-            : 'bg-red-400 hover:bg-red-500 focus:ring-red-400'
+            ? 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500 shadow-md'
+            : 'bg-rose-500 hover:bg-rose-600 focus:ring-rose-400'
         }`}
       >
         <div className="flex items-center justify-center gap-2">
