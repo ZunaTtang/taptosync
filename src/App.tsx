@@ -7,7 +7,6 @@ import { ExportPanel } from './components/ExportPanel';
 import { getNextLineId } from './features/sync/collector';
 import { applyMinGap, smoothIntervals } from './features/sync/smoother';
 import { allocateEndTimes } from './features/sync/allocator';
-import { scaleTimeline } from './features/sync/scaler';
 import type { Line } from './models/line';
 
 const logLines = (location: string, runId: string, hypothesisId: string, linesSnapshot: Line[]) => {
@@ -169,6 +168,31 @@ function App() {
   const currentLine = lines[currentLineIndex];
   const canTap = currentLine !== undefined && audioDuration > 0 && isPlaying;
 
+  // 스페이스바를 재생 제어 대신 마커 입력으로 사용
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!canTap) return;
+        if (tapMode === 'start') {
+          handleStartTap();
+        } else {
+          handleEndTap();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [canTap, tapMode, handleStartTap, handleEndTap]);
+
   // 기록 없는 라인을 현재 재생 시점으로 자동 기록
   const handleSetMissingTime = (lineId: string, fallbackTime: number) => {
     const actualTime = audioPlayerRef.current?.getCurrentTime() ?? fallbackTime;
@@ -191,17 +215,45 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          TapSync Studio
-        </h1>
-        <p className="text-sm text-gray-600 mb-6">타임스탬프를 빠르게 찍고 직접 편집하세요</p>
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-6">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">TapSync Studio</h1>
+            <p className="text-sm text-gray-600 mb-4">타임스탬프를 빠르게 찍고 직접 편집하세요</p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-sm font-semibold text-gray-900">작업 흐름 안내</p>
+                <span className="text-xs text-gray-500 border border-gray-200 rounded-full w-5 h-5 flex items-center justify-center cursor-help" title="1) 자막 텍스트를 붙여넣고, 2) 오디오를 연결해 재생한 뒤, 3) 스페이스바 또는 탭 버튼으로 시작/종료 마커를 찍고, 4) 타임라인에서 미세 조정 후 Export로 내보내세요.">?</span>
+              </div>
+              <ul className="text-sm text-gray-700 list-disc pl-4 space-y-1">
+                <li>텍스트 붙여넣기 → 각 줄이 한 개의 자막이 됩니다.</li>
+                <li>오디오/타이머 준비 → 재생 시작 후 스페이스바로 마커 입력.</li>
+                <li>타임라인에서 시간 값을 클릭하거나 직접 입력해 미세 조정.</li>
+                <li>상단 Export 패널에서 바로 SRT/LRC/CSV로 저장.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="w-full lg:w-80">
+            <div className="sticky top-6 bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-gray-900">Export</h2>
+                <span className="text-xs text-gray-500 border border-gray-200 rounded-full w-5 h-5 flex items-center justify-center cursor-help" title="타임라인에 시작/종료 시간이 모두 채워진 후 바로 SRT, LRC, CapCut CSV를 다운로드할 수 있습니다.">?</span>
+              </div>
+              <ExportPanel lines={lines} />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* 좌측: 텍스트 입력 */}
           <div className="space-y-4">
             <TextInput onLinesChange={handleLinesChange} />
             <div className="flex items-center gap-3 text-sm text-gray-700">
-              <label className="font-medium">재생 이동 간격(초)</label>
+              <label className="font-medium flex items-center gap-2">
+                재생 이동 간격(초)
+                <span className="text-[10px] text-gray-500 border border-gray-200 rounded-full w-4 h-4 flex items-center justify-center cursor-help" title="좌/우 화살표 키로 재생 헤드를 이동할 때 사용되는 기본 간격입니다.">?</span>
+              </label>
               <input
                 type="number"
                 step="0.1"
@@ -224,22 +276,19 @@ function App() {
           {/* 우측: Tap 버튼 및 타임라인 */}
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">
-                  현재 라인: {currentLineIndex + 1} / {lines.length}
-                </p>
+              <div className="mb-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">현재 라인: {currentLineIndex + 1} / {lines.length}</p>
+                  <span className="text-[10px] text-gray-500 border border-gray-200 rounded-full w-4 h-4 flex items-center justify-center cursor-help" title="시작/종료 마커는 스페이스바 또는 아래 탭 버튼으로 찍을 수 있습니다. 오디오가 재생 중일 때만 기록됩니다.">?</span>
+                </div>
                 {currentLine && (
-                  <p className="text-lg font-medium text-gray-900 mb-4">
-                    {currentLine.text}
-                  </p>
+                  <p className="text-lg font-medium text-gray-900">{currentLine.text}</p>
                 )}
-                <p className="text-xs text-gray-500 mb-2">
-                  💡 단축키: ← → (0.1초 이동)
-                </p>
+                <p className="text-xs text-gray-500">💡 단축키: 스페이스바(마커), ←/→ (재생 헤드 이동)</p>
               </div>
-              <TapButton 
-                onStartTap={handleStartTap} 
-                onEndTap={handleEndTap} 
+              <TapButton
+                onStartTap={handleStartTap}
+                onEndTap={handleEndTap}
                 disabled={!canTap}
                 currentMode={tapMode}
               />
@@ -261,11 +310,6 @@ function App() {
               </button>
             </div>
           </div>
-        </div>
-
-        {/* Export 패널 */}
-        <div className="mt-8">
-          <ExportPanel lines={lines} />
         </div>
       </div>
     </div>

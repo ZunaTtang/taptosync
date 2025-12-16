@@ -38,8 +38,8 @@ export function ExportPanel({ lines }: ExportPanelProps) {
   const hasTimestamps = lines.some(l => l.startTime !== undefined && l.endTime !== undefined);
 
   return (
-    <div className="w-full">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Export</h3>
+    <div className="w-full space-y-3">
+      <p className="text-xs text-gray-600">타임라인에 시작/종료 시간이 모두 채워져야 다운로드가 활성화됩니다.</p>
       <div className="flex flex-wrap gap-2">
         <button
           onClick={handleExportSRT}

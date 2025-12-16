@@ -439,8 +439,9 @@ export const AudioPlayer = forwardRef<AudioPlayerRef, AudioPlayerProps>(
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
         오디오 소스 선택
+        <span className="text-[10px] text-gray-500 border border-gray-200 rounded-full w-4 h-4 flex items-center justify-center cursor-help" title="오디오 파일을 불러오거나 파일 없이 타이머 모드로 길이만 지정할 수 있습니다.">?</span>
       </label>
       
       {/* 모드 선택 스위치 */}

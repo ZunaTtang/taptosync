@@ -18,8 +18,9 @@ export function TextInput({ onLinesChange }: TextInputProps) {
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
+      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
         자막 텍스트 입력
+        <span className="text-[10px] text-gray-500 border border-gray-200 rounded-full w-4 h-4 flex items-center justify-center cursor-help" title="각 줄이 하나의 자막으로 처리됩니다. 붙여넣기 후 바로 타임라인에 반영됩니다.">?</span>
       </label>
       <textarea
         value={text}

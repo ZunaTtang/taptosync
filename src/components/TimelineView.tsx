@@ -211,7 +211,10 @@ export function TimelineView({ lines, currentTime, onSeekTo, onTimeUpdate, onSet
 
   return (
     <div className="w-full relative">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">타임라인</h3>
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">타임라인</h3>
+        <span className="text-[10px] text-gray-500 border border-gray-200 rounded-full w-4 h-4 flex items-center justify-center cursor-help" title="각 줄을 클릭해 재생 위치를 이동하거나, 시간 값을 직접 클릭/입력해 미세 조정할 수 있습니다.">?</span>
+      </div>
       <div ref={timelineRef} className="space-y-2 max-h-96 overflow-y-auto">
         {lines.map((line) => {
           const active = isActive(line);
