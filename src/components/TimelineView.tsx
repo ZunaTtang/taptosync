@@ -256,7 +256,10 @@ export function TimelineView({
         </div>
       </div>
       <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <div ref={timelineRef} className="max-h-96 overflow-y-auto">
+        <div
+          ref={timelineRef}
+          className="max-h-[calc(100vh-var(--header-height)-var(--bottom-bar-height)-140px)] overflow-y-auto"
+        >
           <div className="grid grid-cols-[70px_minmax(0,1fr)_140px_140px] items-center gap-3 px-3 py-2 bg-gray-50 text-[11px] font-semibold text-gray-600 sticky top-0 z-10 border-b border-gray-200">
             <span>#</span>
             <span>자막 내용</span>
