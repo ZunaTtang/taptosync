@@ -83,7 +83,7 @@ function App() {
 
   // 시작 탭 버튼 클릭 시
   const handleStartTap = () => {
-    if (currentLineIndex >= lines.length) return;
+    if (currentLineIndex >= lines.length || !isPlaying || audioDuration <= 0) return;
 
     // 오디오의 실제 currentTime을 직접 가져옴 (상태보다 정확)
     const actualTime = audioPlayerRef.current?.getCurrentTime() ?? currentTime;
@@ -118,7 +118,7 @@ function App() {
 
   // 종료 탭 버튼 클릭 시
   const handleEndTap = () => {
-    if (currentLineIndex >= lines.length) return;
+    if (currentLineIndex >= lines.length || !isPlaying || audioDuration <= 0) return;
 
     // 오디오의 실제 currentTime을 직접 가져옴 (상태보다 정확)
     const actualTime = audioPlayerRef.current?.getCurrentTime() ?? currentTime;
@@ -297,6 +297,12 @@ function App() {
 
   const contentPaddingBottom = 'calc(var(--bottom-bar-height) + 32px)';
   const contentPaddingTop = 'calc(var(--header-height) + 12px)';
+  const currentStatusLabel = (() => {
+    if (!currentLine) return '대기 중';
+    if (currentLine.startTime === undefined) return '시작 대기';
+    if (currentLine.endTime === undefined) return '종료 대기';
+    return '완료';
+  })();
 
   return (
     <div className="min-h-screen bg-[color:var(--color-surface)] flex flex-col">
@@ -307,7 +313,7 @@ function App() {
             <div className="app-card py-3 px-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-700">가이드</span>
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-700">작업 흐름</span>
                   <span className="text-gray-600">텍스트 → 탭 → 타임라인 보정 → Export</span>
                 </div>
                 <button
@@ -319,22 +325,24 @@ function App() {
                   {isGuideOpen ? '접기' : '펼치기'}
                 </button>
               </div>
-              {isGuideOpen && (
+              {isGuideOpen ? (
                 <ol className="mt-3 space-y-2 text-sm text-gray-700 list-decimal list-inside">
-                  <li>재생 · 오디오 설정을 먼저 확인합니다.</li>
+                  <li>재생/오디오를 먼저 설정하고 간격을 확인합니다.</li>
                   <li>재생 중 <span className="font-semibold text-blue-700">시작</span> → <span className="font-semibold text-rose-700">종료</span> 순서로 마커를 찍습니다.</li>
                   <li>타임라인에서 누락/오류를 바로 수정하고 Export를 진행합니다.</li>
                 </ol>
+              ) : (
+                <p className="mt-2 text-xs text-gray-500">필요할 때만 펼쳐서 참고하세요.</p>
               )}
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
-              <div className="order-1 space-y-6 lg:order-1">
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+              <section className="order-1 space-y-6 lg:col-start-1 lg:row-start-1">
                 <div className="app-card space-y-4">
                   <div className="section-header">
                     <div>
                       <p className="section-title">재생 · 오디오 설정</p>
-                      <p className="section-sub text-sm">작업 중에도 바로 조정 가능한 최소 구성</p>
+                      <p className="section-sub text-sm">필수 설정을 상단에 모아둔 간결한 영역</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -356,72 +364,55 @@ function App() {
                         min="0.1"
                         value={seekStepSeconds}
                         onChange={(e) => setSeekStepSeconds(Math.max(0.1, Number(e.target.value) || 0.1))}
-                        className="w-28 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                        aria-label="재생 이동 간격 (초)"
+                        className="w-28 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="재생 이동 간격"
                       />
-                      <span className="text-xs text-gray-500">좌/우 화살표로 적용</span>
+                      <span className="text-xs text-gray-500">← →, PageUp/Down 키와 연동</span>
                     </div>
                   </div>
-                  <div className="border-t border-dashed border-gray-200 pt-4">
-                    <AudioPlayer
-                      ref={audioPlayerRef}
-                      onTimeUpdate={setCurrentTime}
-                      onDurationChange={setAudioDuration}
-                      onPlayingChange={setIsPlaying}
-                      seekTo={seekTo}
-                      seekStepSeconds={seekStepSeconds}
-                    />
+                  <div className="form-row">
+                    <label className="text-sm font-semibold text-gray-800">오디오 소스</label>
+                    <div className="flex items-center gap-3">
+                      <AudioPlayer
+                        ref={audioPlayerRef}
+                        onTimeUpdate={setCurrentTime}
+                        onDurationChange={setAudioDuration}
+                        onPlayingChange={setIsPlaying}
+                        seekTo={seekTo}
+                        seekStepSeconds={seekStepSeconds}
+                      />
+                    </div>
                   </div>
                 </div>
+              </section>
 
-                <div className="app-card space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="section-title">자막 텍스트 입력</p>
-                      <p className="section-sub">각 줄이 한 개의 자막 라인이 됩니다. 필요시 접어두세요.</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">총 {lines.length}라인</span>
-                      <button
-                        type="button"
-                        onClick={() => setIsLyricsOpen(!isLyricsOpen)}
-                        className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        aria-expanded={isLyricsOpen}
-                      >
-                        {isLyricsOpen ? '접기' : '펼치기'}
-                      </button>
-                    </div>
-                  </div>
-                  {isLyricsOpen && <TextInput onLinesChange={handleLinesChange} labelHidden />}
-                </div>
-              </div>
-
-              <div className="order-2 space-y-6 lg:order-2 lg:sticky lg:top-[calc(var(--header-height)+16px)]">
+              <section className="order-2 space-y-6 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--header-height)+12px)]">
                 <div className="app-card space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="space-y-1">
                       <p className="section-title">현재 라인</p>
-                      <p className="text-xs text-gray-600">{currentLine ? '현재 편집 중인 라인 상태' : '텍스트를 입력하면 라인이 생성됩니다.'}</p>
+                      <p className="text-xs text-gray-600">{currentLine ? '라인 상태와 단축키를 한곳에 표시' : '텍스트를 입력하면 라인이 생성됩니다.'}</p>
                     </div>
                     <div className="flex items-center gap-2 text-xs">
                       <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{currentLineIndex + 1} / {lines.length || 0}</span>
-                      <span className={`px-3 py-1 rounded-full border text-xs ${tapMode === 'start' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
-                        {tapMode === 'start' ? '시작 대기' : '종료 대기'}
-                      </span>
+                      <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">{currentStatusLabel}</span>
                     </div>
                   </div>
                   {currentLine ? (
                     <div className="space-y-3">
                       <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
-                        <p className="text-sm font-semibold text-gray-800 truncate">{currentLine.text}</p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                          <span className={`px-2 py-1 rounded-full border ${currentLine.startTime !== undefined ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                            시작 {currentLine.startTime !== undefined ? '기록됨' : '대기'}
-                          </span>
-                          <span className={`px-2 py-1 rounded-full border ${currentLine.endTime !== undefined ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                            종료 {currentLine.endTime !== undefined ? '기록됨' : '대기'}
-                          </span>
+                        <div className="flex items-center justify-between gap-2 text-xs text-gray-600">
+                          <span className="font-semibold text-gray-800">#{currentLine.order}</span>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full border ${currentLine.startTime !== undefined ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                              시작 {currentLine.startTime !== undefined ? '기록됨' : '대기'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full border ${currentLine.endTime !== undefined ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                              종료 {currentLine.endTime !== undefined ? '기록됨' : '대기'}
+                            </span>
+                          </div>
                         </div>
+                        <p className="mt-2 text-sm font-semibold text-gray-800 truncate" title={currentLine.text}>{currentLine.text}</p>
                       </div>
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                         <button
@@ -451,7 +442,32 @@ function App() {
                     <p className="text-sm text-gray-500">텍스트를 입력하고 오디오를 설정하면 라인이 표시됩니다.</p>
                   )}
                 </div>
+              </section>
 
+              <section className="order-3 space-y-6 lg:col-start-1 lg:row-start-2">
+                <div className="app-card space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="section-title">자막 텍스트 입력</p>
+                      <p className="section-sub">각 줄이 한 개의 자막 라인이 됩니다. 필요시 접어두세요.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">총 {lines.length}라인</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsLyricsOpen(!isLyricsOpen)}
+                        className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-expanded={isLyricsOpen}
+                      >
+                        {isLyricsOpen ? '접기' : '펼치기'}
+                      </button>
+                    </div>
+                  </div>
+                  {isLyricsOpen && <TextInput onLinesChange={handleLinesChange} labelHidden />}
+                </div>
+              </section>
+
+              <section className="order-4 space-y-6 lg:col-start-2 lg:row-start-2">
                 <TimelineView
                   lines={lines}
                   currentTime={currentTime}
@@ -470,7 +486,7 @@ function App() {
                     </button>
                   }
                 />
-              </div>
+              </section>
             </div>
           </div>
         </div>
