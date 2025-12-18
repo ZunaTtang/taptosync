@@ -17,7 +17,7 @@ const logLines = (location: string, runId: string, hypothesisId: string, linesSn
     order: l.order,
   }));
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId,hypothesisId,location,message:'lines snapshot',data:{snapshot},timestamp:Date.now()})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId, hypothesisId, location, message: 'lines snapshot', data: { snapshot }, timestamp: Date.now() }) }).catch(() => { });
   // #endregion
 };
 
@@ -27,7 +27,7 @@ function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [seekTo, setSeekTo] = useState<number | null>(null);
+  // const [seekTo, setSeekTo] = useState<number | null>(null); // Removed legacy seeking state
   const [tapMode, setTapMode] = useState<'start' | 'end'>('start');
   const [seekStepSeconds, setSeekStepSeconds] = useState(0.5);
   const [isLyricsOpen, setIsLyricsOpen] = useState(true);
@@ -53,7 +53,7 @@ function App() {
     // 오디오의 실제 currentTime을 직접 가져옴 (상태보다 정확)
     const actualTime = audioPlayerRef.current?.getCurrentTime() ?? currentTime;
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'App.tsx:handleStartTap',message:'start tap',data:{actualTime,currentLineIndex,lineId:lines[currentLineIndex]?.id},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'run1', hypothesisId: 'H3', location: 'App.tsx:handleStartTap', message: 'start tap', data: { actualTime, currentLineIndex, lineId: lines[currentLineIndex]?.id }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion
     const currentLine = lines[currentLineIndex];
     const updatedLines = lines.map(line =>
@@ -62,7 +62,7 @@ function App() {
         : line
     );
     logLines('App.tsx:handleStartTap:setTimestamp', 'run2', 'H5', updatedLines);
-    
+
     // 보정 적용
     const withMinGap = applyMinGap(updatedLines);
     logLines('App.tsx:handleStartTap:applyMinGap', 'run2', 'H5', withMinGap);
@@ -75,7 +75,7 @@ function App() {
     logLines('App.tsx:handleStartTap:skipScale', 'run2', 'H5', scaled);
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'App.tsx:handleStartTap',message:'after scaling start',data:{lineId:currentLine.id,startTime:scaled[currentLineIndex]?.startTime,endTime:scaled[currentLineIndex]?.endTime,audioDuration},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'run1', hypothesisId: 'H4', location: 'App.tsx:handleStartTap', message: 'after scaling start', data: { lineId: currentLine.id, startTime: scaled[currentLineIndex]?.startTime, endTime: scaled[currentLineIndex]?.endTime, audioDuration }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion
     setLines(scaled);
     setTapMode('end'); // 종료 탭 모드로 전환
@@ -88,7 +88,7 @@ function App() {
     // 오디오의 실제 currentTime을 직접 가져옴 (상태보다 정확)
     const actualTime = audioPlayerRef.current?.getCurrentTime() ?? currentTime;
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H3',location:'App.tsx:handleEndTap',message:'end tap',data:{actualTime,currentLineIndex,lineId:lines[currentLineIndex]?.id},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'run1', hypothesisId: 'H3', location: 'App.tsx:handleEndTap', message: 'end tap', data: { actualTime, currentLineIndex, lineId: lines[currentLineIndex]?.id }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion
     const currentLine = lines[currentLineIndex];
     // 종료 시간 설정 (시작 값 유지)
@@ -98,7 +98,7 @@ function App() {
       }
       return line;
     });
-    
+
     // 보정 적용
     const withMinGap = applyMinGap(updatedLines);
     const smoothed = smoothIntervals(withMinGap);
@@ -108,10 +108,10 @@ function App() {
     logLines('App.tsx:handleEndTap:skipScale', 'run2', 'H5', scaled);
 
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'H4',location:'App.tsx:handleEndTap',message:'after scaling end',data:{lineId:currentLine.id,startTime:scaled[currentLineIndex]?.startTime,endTime:scaled[currentLineIndex]?.endTime,audioDuration},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'run1', hypothesisId: 'H4', location: 'App.tsx:handleEndTap', message: 'after scaling end', data: { lineId: currentLine.id, startTime: scaled[currentLineIndex]?.startTime, endTime: scaled[currentLineIndex]?.endTime, audioDuration }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion
     setLines(scaled);
-    
+
     // 다음 라인으로 이동하고 시작 탭 모드로 전환
     const nextId = getNextLineId(scaled, currentLine.order);
     if (nextId) {
@@ -148,7 +148,7 @@ function App() {
         }
         return line;
       });
-      
+
       // 보정 적용
       const withMinGap = applyMinGap(updated);
       const smoothed = smoothIntervals(withMinGap);
@@ -160,11 +160,11 @@ function App() {
   // 타임라인 클릭 시 재생 위치 이동
   const handleSeekTo = (time: number) => {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run4',hypothesisId:'H_seek',location:'App.tsx:handleSeekTo',message:'request seek',data:{time},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/41a3d5a8-1690-4b8d-ba87-c41877d5e201', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: 'debug-session', runId: 'run4', hypothesisId: 'H_seek', location: 'App.tsx:handleSeekTo', message: 'request seek', data: { time }, timestamp: Date.now() }) }).catch(() => { });
     // #endregion
-    setSeekTo(time);
-    // 다음 렌더링에서 null로 리셋
-    setTimeout(() => setSeekTo(null), 0);
+
+    // Imperative seek via ref (SSOT Rule #2)
+    audioPlayerRef.current?.seek(time);
   };
 
   const currentLine = lines[currentLineIndex];
@@ -308,7 +308,7 @@ function App() {
                   onTimeUpdate={setCurrentTime}
                   onDurationChange={setAudioDuration}
                   onPlayingChange={setIsPlaying}
-                  seekTo={seekTo}
+
                   seekStepSeconds={seekStepSeconds}
                 />
               </div>
