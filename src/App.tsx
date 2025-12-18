@@ -4,6 +4,7 @@ import { AudioPlayer, type AudioPlayerRef } from './components/AudioPlayer';
 import { TimelineView } from './components/TimelineView';
 import { HeaderBar } from './components/HeaderBar';
 import { BottomControlBar } from './components/BottomControlBar';
+import { ShortcutSettingsModal, type ShortcutConfig } from './components/ShortcutSettingsModal';
 import { getNextLineId } from './features/sync/collector';
 import { applyMinGap, smoothIntervals } from './features/sync/smoother';
 import { allocateEndTimes } from './features/sync/allocator';
@@ -32,7 +33,41 @@ function App() {
   const [seekStepSeconds, setSeekStepSeconds] = useState(0.5);
   const [isLyricsOpen, setIsLyricsOpen] = useState(true);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [shortcutConfig, setShortcutConfig] = useState<ShortcutConfig>({ start: 'i', end: 'o', next: 'ArrowDown' });
+  const [isShortcutModalOpen, setIsShortcutModalOpen] = useState(false);
+  const isComposingRef = useRef(false);
   const audioPlayerRef = useRef<AudioPlayerRef>(null);
+
+  const isBlockedShortcut = (key?: string) => {
+    if (!key) return false;
+    const lower = key.toLowerCase();
+    return lower === ' ' || lower === 'space' || lower === 'spacebar';
+  };
+
+  // 단축키 초기화 및 저장
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('taptosync-shortcuts');
+      if (stored) {
+        const parsed = JSON.parse(stored) as ShortcutConfig;
+        const validStart = parsed.start && !isBlockedShortcut(parsed.start);
+        const validEnd = parsed.end && !isBlockedShortcut(parsed.end) && parsed.start !== parsed.end;
+        let nextKey = parsed.next;
+        if (nextKey && (isBlockedShortcut(nextKey) || nextKey.toLowerCase() === parsed.start?.toLowerCase() || nextKey.toLowerCase() === parsed.end?.toLowerCase())) {
+          nextKey = 'ArrowDown';
+        }
+        if (validStart && validEnd) {
+          setShortcutConfig({ start: parsed.start, end: parsed.end, next: nextKey || 'ArrowDown' });
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('taptosync-shortcuts', JSON.stringify(shortcutConfig));
+  }, [shortcutConfig]);
 
   // 전체 타임스탬프 초기화
   const handleResetTimestamps = () => {
@@ -48,7 +83,7 @@ function App() {
 
   // 시작 탭 버튼 클릭 시
   const handleStartTap = () => {
-    if (currentLineIndex >= lines.length) return;
+    if (currentLineIndex >= lines.length || !isPlaying || audioDuration <= 0) return;
 
     // 오디오의 실제 currentTime을 직접 가져옴 (상태보다 정확)
     const actualTime = audioPlayerRef.current?.getCurrentTime() ?? currentTime;
@@ -83,7 +118,7 @@ function App() {
 
   // 종료 탭 버튼 클릭 시
   const handleEndTap = () => {
-    if (currentLineIndex >= lines.length) return;
+    if (currentLineIndex >= lines.length || !isPlaying || audioDuration <= 0) return;
 
     // 오디오의 실제 currentTime을 직접 가져옴 (상태보다 정확)
     const actualTime = audioPlayerRef.current?.getCurrentTime() ?? currentTime;
@@ -194,27 +229,64 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const handleSpaceToggle = (e: KeyboardEvent) => {
+    const handleCompositionStart = () => {
+      isComposingRef.current = true;
+    };
+    const handleCompositionEnd = () => {
+      isComposingRef.current = false;
+    };
+
+    window.addEventListener('compositionstart', handleCompositionStart);
+    window.addEventListener('compositionend', handleCompositionEnd);
+
+    return () => {
+      window.removeEventListener('compositionstart', handleCompositionStart);
+      window.removeEventListener('compositionend', handleCompositionEnd);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleGlobalKeys = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isEditableInput =
         target instanceof HTMLTextAreaElement ||
         (target instanceof HTMLInputElement &&
           ['text', 'search', 'url', 'tel', 'email', 'password', 'number'].includes(target.type)) ||
+        target instanceof HTMLSelectElement ||
         target?.getAttribute('contenteditable') === 'true';
 
-      if (isEditableInput) return;
+      if (isEditableInput || isComposingRef.current || isShortcutModalOpen) return;
 
-      if (e.code === 'Space' || e.key === ' ') {
+      const lowerKey = e.key.toLowerCase();
+
+      if (lowerKey === ' ' || lowerKey === 'spacebar') {
         e.preventDefault();
         handleTogglePlay();
+        return;
+      }
+
+      if (lowerKey === shortcutConfig.start.toLowerCase()) {
+        e.preventDefault();
+        handleStartTap();
+        return;
+      }
+
+      if (lowerKey === shortcutConfig.end.toLowerCase()) {
+        e.preventDefault();
+        handleEndTap();
+        return;
+      }
+
+      if (shortcutConfig.next && lowerKey === shortcutConfig.next.toLowerCase()) {
+        e.preventDefault();
+        setCurrentLineIndex((prev) => Math.min(prev + 1, Math.max(lines.length - 1, 0)));
+        setTapMode('start');
       }
     };
 
-    window.addEventListener('keydown', handleSpaceToggle);
-    return () => {
-      window.removeEventListener('keydown', handleSpaceToggle);
-    };
-  }, [handleTogglePlay]);
+    window.addEventListener('keydown', handleGlobalKeys);
+    return () => window.removeEventListener('keydown', handleGlobalKeys);
+  }, [handleTogglePlay, shortcutConfig, handleStartTap, handleEndTap, isShortcutModalOpen, lines.length]);
 
   const handleJumpToCurrentLine = () => {
     const active = lines[currentLineIndex];
@@ -223,8 +295,14 @@ function App() {
     }
   };
 
-  const contentPaddingBottom = 'calc(var(--bottom-bar-height) + 28px)';
-  const contentPaddingTop = 'calc(var(--header-height) + 8px)';
+  const contentPaddingBottom = 'calc(var(--bottom-bar-height) + 32px)';
+  const contentPaddingTop = 'calc(var(--header-height) + 12px)';
+  const currentStatusLabel = (() => {
+    if (!currentLine) return '대기 중';
+    if (currentLine.startTime === undefined) return '시작 대기';
+    if (currentLine.endTime === undefined) return '종료 대기';
+    return '완료';
+  })();
 
   return (
     <div className="min-h-screen bg-[color:var(--color-surface)] flex flex-col">
@@ -232,11 +310,11 @@ function App() {
       <main className="flex-1 overflow-y-auto" style={{ paddingTop: contentPaddingTop }}>
         <div className="app-container mx-auto px-4" style={{ paddingBottom: contentPaddingBottom }}>
           <div className="space-y-5">
-            <div className="app-card">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="section-title">작업 흐름 안내</p>
-                  <p className="section-sub text-sm text-gray-600">필요할 때만 펼쳐보세요.</p>
+            <div className="app-card py-3 px-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-gray-700">
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-gray-700">작업 흐름</span>
+                  <span className="text-gray-600">텍스트 → 탭 → 타임라인 보정 → Export</span>
                 </div>
                 <button
                   type="button"
@@ -244,143 +322,203 @@ function App() {
                   className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-expanded={isGuideOpen}
                 >
-                  {isGuideOpen ? '접기' : '자세히 보기'}
+                  {isGuideOpen ? '접기' : '펼치기'}
                 </button>
               </div>
-              {isGuideOpen && (
+              {isGuideOpen ? (
                 <ol className="mt-3 space-y-2 text-sm text-gray-700 list-decimal list-inside">
-                  <li>자막 텍스트를 붙여넣으면 자동으로 줄 단위 라인이 생성됩니다.</li>
-                  <li>오디오 소스를 선택하고 화살표(← →)로 미세 이동합니다.</li>
-                  <li>재생 중 <span className="font-semibold text-blue-700">시작 탭</span> → <span className="font-semibold text-rose-700">종료 탭</span> 순서로 타임스탬프를 기록합니다.</li>
-                  <li>타임라인에서 시간을 직접 수정하거나 누락된 라인을 클릭해 보완하세요.</li>
-                  <li>모든 라인이 채워지면 상단 Export에서 SRT/LRC/CSV를 내려받습니다.</li>
+                  <li>재생/오디오를 먼저 설정하고 간격을 확인합니다.</li>
+                  <li>재생 중 <span className="font-semibold text-blue-700">시작</span> → <span className="font-semibold text-rose-700">종료</span> 순서로 마커를 찍습니다.</li>
+                  <li>타임라인에서 누락/오류를 바로 수정하고 Export를 진행합니다.</li>
                 </ol>
+              ) : (
+                <p className="mt-2 text-xs text-gray-500">필요할 때만 펼쳐서 참고하세요.</p>
               )}
             </div>
 
-            <div className="app-card space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="section-title">자막 텍스트 입력</p>
-                  <p className="section-sub">각 줄이 한 개의 자막 라인이 됩니다. 필요시 접어두고 타임라인을 확장하세요.</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">총 {lines.length}라인</span>
-                  <button
-                    type="button"
-                    onClick={() => setIsLyricsOpen(!isLyricsOpen)}
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-expanded={isLyricsOpen}
-                  >
-                    {isLyricsOpen ? '접기' : '펼치기'}
-                  </button>
-                </div>
-              </div>
-              {isLyricsOpen && <TextInput onLinesChange={handleLinesChange} labelHidden />}
-            </div>
-
-            <div className="app-card space-y-4">
-              <div className="section-header">
-                <div>
-                  <p className="section-title">재생 · 오디오 설정</p>
-                  <p className="section-sub">탭 속도를 끌어올릴 수 있도록 이동 간격과 오디오 소스를 한곳에서 설정합니다.</p>
-                </div>
-                <span className="px-3 py-1 text-xs rounded-full bg-purple-50 text-purple-700 border border-purple-100">단축키: ← →</span>
-              </div>
-              <div className="form-row">
-                <label className="text-sm font-semibold text-gray-800">재생 이동 간격(초)</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0.1"
-                    value={seekStepSeconds}
-                    onChange={(e) => setSeekStepSeconds(Math.max(0.1, Number(e.target.value) || 0.1))}
-                    className="w-28 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                    aria-label="재생 이동 간격 (초)"
-                  />
-                  <span className="text-xs text-gray-500">좌/우 화살표로 적용</span>
-                </div>
-              </div>
-              <div className="border-t border-dashed border-gray-200 pt-4">
-                <AudioPlayer
-                  ref={audioPlayerRef}
-                  onTimeUpdate={setCurrentTime}
-                  onDurationChange={setAudioDuration}
-                  onPlayingChange={setIsPlaying}
-
-                  seekStepSeconds={seekStepSeconds}
-                />
-              </div>
-            </div>
-
-            <div className="app-card space-y-3">
-              <div className="section-header">
-                <div className="space-y-1">
-                  <p className="section-title">현재 라인</p>
-                  <p className="text-xs text-gray-500">텍스트 확인과 상태 체크는 이곳에서, 탭은 하단 고정 컨트롤에서 수행하세요.</p>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{currentLineIndex + 1} / {lines.length}</span>
-                  <span className={`px-3 py-1 rounded-full border text-xs ${tapMode === 'start' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}>
-                    {tapMode === 'start' ? '시작 대기' : '종료 대기'}
-                  </span>
-                </div>
-              </div>
-              {currentLine ? (
-                <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{currentLine.text}</p>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    <span className={`px-2 py-1 rounded-full border ${currentLine.startTime !== undefined ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                      시작 {currentLine.startTime !== undefined ? '기록됨' : '대기'}
-                    </span>
-                    <span className={`px-2 py-1 rounded-full border ${currentLine.endTime !== undefined ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                      종료 {currentLine.endTime !== undefined ? '기록됨' : '대기'}
-                    </span>
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+              <section className="order-1 space-y-6 lg:col-start-1 lg:row-start-1">
+                <div className="app-card space-y-4">
+                  <div className="section-header">
+                    <div>
+                      <p className="section-title">재생 · 오디오 설정</p>
+                      <p className="section-sub text-sm">필수 설정을 상단에 모아둔 간결한 영역</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsShortcutModalOpen(true)}
+                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        단축키 설정
+                      </button>
+                      <span className="px-3 py-1 text-xs rounded-full bg-purple-50 text-purple-700 border border-purple-100">← → 이동</span>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <label className="text-sm font-semibold text-gray-800">재생 이동 간격(초)</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.1"
+                        value={seekStepSeconds}
+                        onChange={(e) => setSeekStepSeconds(Math.max(0.1, Number(e.target.value) || 0.1))}
+                        className="w-28 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label="재생 이동 간격"
+                      />
+                      <span className="text-xs text-gray-500">← →, PageUp/Down 키와 연동</span>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <label className="text-sm font-semibold text-gray-800">오디오 소스</label>
+                    <div className="flex items-center gap-3">
+                      <AudioPlayer
+                        ref={audioPlayerRef}
+                        onTimeUpdate={setCurrentTime}
+                        onDurationChange={setAudioDuration}
+                        onPlayingChange={setIsPlaying}
+                        // seekTo={seekTo} // Legacy prop removed
+                        seekStepSeconds={seekStepSeconds}
+                      />
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500">텍스트를 입력하고 오디오를 설정하면 라인이 표시됩니다.</p>
-              )}
+              </section>
             </div>
-
-            <TimelineView
-              lines={lines}
-              currentTime={currentTime}
-              onSeekTo={handleSeekTo}
-              onTimeUpdate={handleTimeUpdate}
-              onSetMissingTime={handleSetMissingTime}
-              currentLineIndex={currentLineIndex}
-              totalLines={lines.length}
-              onJumpToCurrent={handleJumpToCurrentLine}
-              headerAction={
-                <button
-                  onClick={handleResetTimestamps}
-                  className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
-                >
-                  타임스탬프 초기화
-                </button>
-              }
-            />
           </div>
-        </div>
-      </main>
+        </section>
 
-      <BottomControlBar
-        currentTime={currentTime}
-        duration={audioDuration}
-        isPlaying={isPlaying}
-        onTogglePlay={handleTogglePlay}
-        onSeek={handleSeekTo}
-        onStartTap={handleStartTap}
-        onEndTap={handleEndTap}
-        tapMode={tapMode}
-        currentLineIndex={currentLineIndex}
-        totalLines={lines.length}
-        currentLine={currentLine}
-        tapDisabled={!canTap}
-      />
+        <section className="order-2 space-y-6 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-[calc(var(--header-height)+12px)]">
+          <div className="app-card space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="section-title">현재 라인</p>
+                <p className="text-xs text-gray-600">{currentLine ? '라인 상태와 단축키를 한곳에 표시' : '텍스트를 입력하면 라인이 생성됩니다.'}</p>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{currentLineIndex + 1} / {lines.length || 0}</span>
+                <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">{currentStatusLabel}</span>
+              </div>
+            </div>
+            {currentLine ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+                  <div className="flex items-center justify-between gap-2 text-xs text-gray-600">
+                    <span className="font-semibold text-gray-800">#{currentLine.order}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-full border ${currentLine.startTime !== undefined ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                        시작 {currentLine.startTime !== undefined ? '기록됨' : '대기'}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full border ${currentLine.endTime !== undefined ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                        종료 {currentLine.endTime !== undefined ? '기록됨' : '대기'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-gray-800 truncate" title={currentLine.text}>{currentLine.text}</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={handleStartTap}
+                    disabled={!canTap}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="시작 마커 찍기"
+                  >
+                    <span aria-hidden>▶</span>
+                    시작 마커
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleEndTap}
+                    disabled={!canTap}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    aria-label="종료 마커 찍기"
+                  >
+                    <span aria-hidden>⏹</span>
+                    종료 마커
+                  </button>
+                </div>
+                <p className="text-xs text-gray-600">Start ({shortcutConfig.start || 'I'}) / End ({shortcutConfig.end || 'O'}) / Play (Space)</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">텍스트를 입력하고 오디오를 설정하면 라인이 표시됩니다.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="order-3 space-y-6 lg:col-start-1 lg:row-start-2">
+          <div className="app-card space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="section-title">자막 텍스트 입력</p>
+                <p className="section-sub">각 줄이 한 개의 자막 라인이 됩니다. 필요시 접어두세요.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700">총 {lines.length}라인</span>
+                <button
+                  type="button"
+                  onClick={() => setIsLyricsOpen(!isLyricsOpen)}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-expanded={isLyricsOpen}
+                >
+                  {isLyricsOpen ? '접기' : '펼치기'}
+                </button>
+              </div>
+            </div>
+            {isLyricsOpen && <TextInput onLinesChange={handleLinesChange} labelHidden />}
+          </div>
+        </section>
+
+        <section className="order-4 space-y-6 lg:col-start-2 lg:row-start-2">
+          <TimelineView
+            lines={lines}
+            currentTime={currentTime}
+            onSeekTo={handleSeekTo}
+            onTimeUpdate={handleTimeUpdate}
+            onSetMissingTime={handleSetMissingTime}
+            currentLineIndex={currentLineIndex}
+            totalLines={lines.length}
+            onJumpToCurrent={handleJumpToCurrentLine}
+            headerAction={
+              <button
+                onClick={handleResetTimestamps}
+                className="px-3 py-2 text-xs bg-gray-100 text-gray-700 rounded-lg border border-gray-200 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              >
+                타임스탬프 초기화
+              </button>
+            }
+          />
+        </section>
     </div>
+        </div >
+      </main >
+
+    <BottomControlBar
+      currentTime={currentTime}
+      duration={audioDuration}
+      isPlaying={isPlaying}
+      onTogglePlay={handleTogglePlay}
+      onSeek={handleSeekTo}
+      onStartTap={handleStartTap}
+      onEndTap={handleEndTap}
+      tapMode={tapMode}
+      currentLineIndex={currentLineIndex}
+      totalLines={lines.length}
+      currentLine={currentLine}
+      tapDisabled={!canTap}
+    />
+
+  {
+    isShortcutModalOpen && (
+      <ShortcutSettingsModal
+        initialConfig={shortcutConfig}
+        onSave={setShortcutConfig}
+        onClose={() => setIsShortcutModalOpen(false)}
+      />
+    )
+  }
+    </div >
   );
 }
 

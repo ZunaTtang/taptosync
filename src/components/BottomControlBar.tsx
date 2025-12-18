@@ -60,13 +60,13 @@ export function BottomControlBar({
     <div className="bottom-bar fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-[color:var(--color-surface)]/95 backdrop-blur">
       <div className="app-container mx-auto flex flex-col gap-3 px-4 py-3">
         <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-gray-600">
-            <span className="rounded-full border border-gray-200 px-3 py-1 font-semibold text-gray-800">라인 {currentLabel}</span>
-            <span className="inline-flex items-center gap-1 text-gray-600">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-700">
+            <span className="rounded-full border border-gray-200 px-3 py-1 font-semibold text-gray-800 bg-white">라인 {currentLabel}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-gray-700">
               <span className={`h-2 w-2 rounded-full ${currentLine?.startTime !== undefined ? 'bg-green-500' : 'bg-gray-300'}`} aria-hidden />
               Start {currentLine?.startTime !== undefined ? 'set' : '대기'}
             </span>
-            <span className="inline-flex items-center gap-1 text-gray-600">
+            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-gray-700">
               <span className={`h-2 w-2 rounded-full ${currentLine?.endTime !== undefined ? 'bg-rose-500' : 'bg-gray-300'}`} aria-hidden />
               End {currentLine?.endTime !== undefined ? 'set' : '대기'}
             </span>
@@ -110,47 +110,44 @@ export function BottomControlBar({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 lg:gap-4">
-          <div className="text-[11px] text-gray-600">즉시 조작: 재생 · 탭</div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={onTogglePlay}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label={isPlaying ? '일시정지' : '재생'}
-            >
-              <span aria-hidden>{isPlaying ? '⏸' : '▶'}</span>
-              <span>{isPlaying ? '일시정지' : '재생'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={onStartTap}
-              disabled={tapDisabled}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60 ${
-                tapMode === 'start'
-                  ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
-                  : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400'
-              }`}
-              aria-label="시작 탭"
-            >
-              <span aria-hidden>▶</span>
-              <span>시작 탭</span>
-            </button>
-            <button
-              type="button"
-              onClick={onEndTap}
-              disabled={tapDisabled}
-              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60 ${
-                tapMode === 'end'
-                  ? 'bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500'
-                  : 'bg-rose-500 text-white hover:bg-rose-600 focus:ring-rose-400'
-              }`}
-              aria-label="종료 탭"
-            >
-              <span aria-hidden>⏹</span>
-              <span>종료 탭</span>
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center justify-center gap-3 lg:gap-4">
+          <button
+            type="button"
+            onClick={onTogglePlay}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label={isPlaying ? '일시정지' : '재생'}
+          >
+            <span aria-hidden>{isPlaying ? '⏸' : '▶'}</span>
+            <span>{isPlaying ? '일시정지' : '재생'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onStartTap}
+            disabled={tapDisabled}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60 ${
+              tapMode === 'start'
+                ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
+                : 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400'
+            }`}
+            aria-label="시작 탭"
+          >
+            <span aria-hidden>▶</span>
+            <span>시작 탭</span>
+          </button>
+          <button
+            type="button"
+            onClick={onEndTap}
+            disabled={tapDisabled}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60 ${
+              tapMode === 'end'
+                ? 'bg-rose-600 text-white hover:bg-rose-700 focus:ring-rose-500'
+                : 'bg-rose-500 text-white hover:bg-rose-600 focus:ring-rose-400'
+            }`}
+            aria-label="종료 탭"
+          >
+            <span aria-hidden>⏹</span>
+            <span>종료 탭</span>
+          </button>
         </div>
       </div>
     </div>
