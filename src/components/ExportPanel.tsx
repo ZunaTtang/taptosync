@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { formatSRT } from '@/features/export/srt';
 import { formatLRC } from '@/features/export/lrc';
 import { formatCapCutCSV } from '@/features/export/capcut-csv';
+import { formatFCP7XML_Premiere, formatFCPXML } from '@/features/export/xml-export';
 import type { Line } from '@/models/line';
 
 interface ExportPanelProps {
@@ -40,6 +41,18 @@ export function ExportPanel({ lines, compact = false }: ExportPanelProps) {
   const handleExportCapCut = () => {
     const csv = formatCapCutCSV(lines);
     handleDownload(csv, 'capcut.csv', 'text/csv');
+    setOpen(false);
+  };
+
+  const handleExportPremiereXML = () => {
+    const xml = formatFCP7XML_Premiere(lines);
+    handleDownload(xml, 'premiere_markers.xml', 'text/xml');
+    setOpen(false);
+  };
+
+  const handleExportFCPXML = () => {
+    const xml = formatFCPXML(lines);
+    handleDownload(xml, 'project.fcpxml', 'text/xml');
     setOpen(false);
   };
 
@@ -109,6 +122,21 @@ export function ExportPanel({ lines, compact = false }: ExportPanelProps) {
             >
               CapCut CSV
             </button>
+            <div className="border-t border-gray-100 my-1"></div>
+            <button
+              role="menuitem"
+              onClick={handleExportPremiereXML}
+              className="block w-full px-4 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 focus:outline-none focus:bg-gray-50"
+            >
+              Premiere Pro XML
+            </button>
+            <button
+              role="menuitem"
+              onClick={handleExportFCPXML}
+              className="block w-full px-4 py-2 text-left text-sm text-gray-800 hover:bg-gray-50 focus:outline-none focus:bg-gray-50"
+            >
+              Final Cut Pro XML
+            </button>
           </div>
         )}
         {!hasTimestamps && (
@@ -157,10 +185,30 @@ export function ExportPanel({ lines, compact = false }: ExportPanelProps) {
         >
           CapCut CSV 다운로드
         </button>
+        <button
+          onClick={handleExportPremiereXML}
+          disabled={!hasTimestamps}
+          className="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          aria-disabled={!hasTimestamps}
+          title={!hasTimestamps ? '모든 라인의 시작/종료 시간을 채워주세요.' : 'Premiere Pro Markers XML 다운로드'}
+        >
+          Premiere XML (FCP7)
+        </button>
+        <button
+          onClick={handleExportFCPXML}
+          disabled={!hasTimestamps}
+          className="px-4 py-2 bg-purple-700 text-white rounded-lg hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          aria-disabled={!hasTimestamps}
+          title={!hasTimestamps ? '모든 라인의 시작/종료 시간을 채워주세요.' : 'Final Cut Pro XML 다운로드'}
+        >
+          FCPXML
+        </button>
       </div>
-      {!hasTimestamps && (
-        <p className="text-xs text-gray-500">모든 라인의 시작·종료 시간이 입력되면 버튼이 활성화됩니다.</p>
-      )}
-    </div>
+      {
+        !hasTimestamps && (
+          <p className="text-xs text-gray-500">모든 라인의 시작·종료 시간이 입력되면 버튼이 활성화됩니다.</p>
+        )
+      }
+    </div >
   );
 }

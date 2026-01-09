@@ -5,5 +5,6 @@ export interface Line {
   order: number;        // 순서
   startTime?: number;   // 시작 시간 (초)
   endTime?: number;     // 종료 시간 (초)
+  isEndLocked?: boolean; // 종료 시간 고정 여부 (End Lock)
 }
 

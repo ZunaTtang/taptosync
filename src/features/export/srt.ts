@@ -32,7 +32,9 @@ export function formatSRT(lines: Line[]): string {
   return linesWithTime
     .map((line, index) => {
       const start = formatSRTTime(line.startTime!);
-      const end = formatSRTTime(line.endTime!);
+      // Ensure end > start (min 0.1s duration)
+      const safeEndTime = Math.max(line.endTime!, line.startTime! + 0.1);
+      const end = formatSRTTime(safeEndTime);
       return `${index + 1}\n${start} --> ${end}\n${line.text}\n`;
     })
     .join('\n');

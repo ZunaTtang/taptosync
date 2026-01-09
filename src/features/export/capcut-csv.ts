@@ -30,8 +30,8 @@ export function formatCapCutCSV(lines: Line[]): string {
 
   const header = 'start,end,text';
   const rows = linesWithTime.map(line => {
-    const start = line.startTime!.toFixed(1);
-    const end = line.endTime!.toFixed(1);
+    const start = line.startTime!.toFixed(3);
+    const end = line.endTime!.toFixed(3);
     const text = escapeCSV(line.text);
     return `${start},${end},${text}`;
   });

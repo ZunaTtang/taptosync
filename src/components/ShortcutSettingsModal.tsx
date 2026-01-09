@@ -4,6 +4,7 @@ export type ShortcutConfig = {
   start: string;
   end: string;
   next?: string;
+  endLock?: string; // NEW: Default 'e' for End Lock feature
 };
 
 interface ShortcutSettingsModalProps {
@@ -25,12 +26,14 @@ export function ShortcutSettingsModal({ initialConfig, onSave, onClose }: Shortc
   const [start, setStart] = useState(initialConfig.start || 'i');
   const [end, setEnd] = useState(initialConfig.end || 'o');
   const [next, setNext] = useState(initialConfig.next || 'ArrowDown');
+  const [endLock, setEndLock] = useState(initialConfig.endLock || 'e');
   const [error, setError] = useState('');
 
   useEffect(() => {
     setStart(initialConfig.start || 'i');
     setEnd(initialConfig.end || 'o');
     setNext(initialConfig.next || 'ArrowDown');
+    setEndLock(initialConfig.endLock || 'e');
   }, [initialConfig]);
 
   const handleCapture = (setter: (key: string) => void) => (e: KeyboardEvent<HTMLInputElement>) => {
@@ -64,8 +67,16 @@ export function ShortcutSettingsModal({ initialConfig, onSave, onClose }: Shortc
       return null;
     }
 
-    if (lowerNext && (lowerNext === lowerStart || lowerNext === lowerEnd || disallowedKeys.includes(lowerNext))) {
-      setError('다음 라인 단축키는 시작/종료 및 Spacebar와 달라야 합니다.');
+    const normalizedEndLock = endLock.trim();
+    const lowerEndLock = normalizedEndLock.toLowerCase();
+
+    if (lowerNext && (lowerNext === lowerStart || lowerNext === lowerEnd || lowerNext === lowerEndLock || disallowedKeys.includes(lowerNext))) {
+      setError('다음 라인 단축키는 다른 단축키 및 Spacebar와 달라야 합니다.');
+      return null;
+    }
+
+    if (lowerEndLock && (lowerEndLock === lowerStart || lowerEndLock === lowerEnd || lowerEndLock === lowerNext || disallowedKeys.includes(lowerEndLock))) {
+      setError('End Lock 단축키는 다른 단축키 및 Spacebar와 달라야 합니다.');
       return null;
     }
 
@@ -73,6 +84,7 @@ export function ShortcutSettingsModal({ initialConfig, onSave, onClose }: Shortc
       start: normalizedStart,
       end: normalizedEnd,
       next: normalizedNext,
+      endLock: normalizedEndLock,
     };
   };
 
@@ -124,8 +136,9 @@ export function ShortcutSettingsModal({ initialConfig, onSave, onClose }: Shortc
 
         <div className="mt-4 space-y-3">
           {renderInput('시작 마커', start, setStart, '기본: I')}
-          {renderInput('종료 마커', end, setEnd, '기본: O')}
-          {renderInput('다음 라인 이동 (선택)', next, setNext, '기본: ArrowDown 또는 Enter')}
+          {renderInput('종료 마커', end, setEnd, '기본: O (Smart Tap)')}
+          {renderInput('End Lock (종료 고정)', endLock, setEndLock, '기본: E - 현재 라인 종료 시각 고정')}
+          {renderInput('다음 라인 이동 (선택)', next, setNext, '기본: ArrowDown')}
         </div>
 
         {error && <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
@@ -137,6 +150,7 @@ export function ShortcutSettingsModal({ initialConfig, onSave, onClose }: Shortc
               setStart('i');
               setEnd('o');
               setNext('ArrowDown');
+              setEndLock('e');
               setError('');
             }}
             className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
